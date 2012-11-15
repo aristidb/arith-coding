@@ -29,7 +29,7 @@ instance Random Prob where
 instance Arbitrary Prob where
   arbitrary = arbitraryBoundedRandom
 
-data PInterval = PI Prob Prob
+data PInterval = PI { start :: Prob, end :: Prob }
   deriving (Show, Eq)
 
 piIsValid :: PInterval -> Bool
@@ -70,6 +70,12 @@ encodeStep m x outer = embed outer (enc m x)
 
 encode :: Model a -> [a] -> Prob
 encode model xs = midpoint $ foldl' (flip $ encodeStep model) initial xs
+
+decode :: Model a -> Prob -> [(a, PInterval)]
+decode model p = go (PI p p)
+  where go inner = (c, inner) : go (unembed outer inner)
+          where c = dec model (midpoint inner)
+                outer = enc model c
 
 stdBoolModel :: Model Bool
 stdBoolModel = Model { enc = enco, dec = deco }
