@@ -33,10 +33,7 @@ instance Arbitrary PInterval where
   arbitrary = do [a, b] <- sort <$> replicateM 2 arbitrary
                  return (PI a b)
 
-data Iso a b = Iso { to :: a -> b
-                   , from :: b -> a }
-
-type Model a = Iso PInterval a
+data Model a = Model { enc :: a -> PInterval, dec :: Prob -> a }
 
 initial :: PInterval
 initial = PI 0 1
@@ -55,8 +52,16 @@ unembed (PI a b) (PI x y) = PI ((x - a) * l) (1 - l * (b - y))
 prop_unembedEmbed :: PInterval -> PInterval -> Bool
 prop_unembedEmbed outer inner = unembed outer (embed outer inner) == inner
 
-encodeStep :: Model a -> PInterval -> a -> PInterval
-encodeStep (Iso f _) (PI a b) x = undefined
+encodeStep :: Model a -> a -> PInterval -> PInterval
+encodeStep m x outer = embed outer (enc m x)
 
 encode :: Model a -> [a] -> Prob
-encode model xs = midpoint $ foldl' (encodeStep model) initial xs
+encode model xs = midpoint $ foldr (encodeStep model) initial xs
+
+stdBoolModel :: Model Bool
+stdBoolModel = Model { enc = enco, dec = deco }
+  where enco False = PI 0 0.5
+        enco True = PI 0.5 1
+
+        deco x | x <= 0.5  = False
+               | otherwise = True
