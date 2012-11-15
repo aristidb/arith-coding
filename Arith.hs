@@ -12,6 +12,9 @@ import Test.QuickCheck
 newtype Prob = Prob { unProb :: Rational }
   deriving (Eq, Ord, Num, Fractional)
 
+probIsValid :: Prob -> Bool
+probIsValid (Prob x) = x >= 0 && x <= 1
+
 instance Show Prob where
   showsPrec d (Prob x) = showsPrec d (fromRational x :: Double)
 
@@ -29,6 +32,9 @@ instance Arbitrary Prob where
 data PInterval = PI Prob Prob
   deriving (Show, Eq)
 
+piIsValid :: PInterval -> Bool
+piIsValid (PI a b) = probIsValid a && probIsValid b && a < b
+
 instance Arbitrary PInterval where
   arbitrary = do [a, b] <- sort <$> replicateM 2 arbitrary
                  return (PI a b)
@@ -42,11 +48,18 @@ midpoint :: PInterval -> Prob
 midpoint (PI a b) = (a + b) / 2
 
 embed :: PInterval -> PInterval -> PInterval
-embed (PI a b) (PI x y) = PI (a + x/l) (b-(1-y)/l)
+embed (PI a b) (PI x y) = PI (a + x*l) (b-(1-y)*l)
   where l = b - a
 
+prop_embedConstrains :: PInterval -> PInterval -> Bool
+prop_embedConstrains outer@(PI oa ob) inner = let (PI a b) = embed outer inner
+                                              in a >= oa && b <= ob
+
+prop_embedValid :: PInterval -> PInterval -> Bool
+prop_embedValid outer inner = piIsValid (embed outer inner)
+
 unembed :: PInterval -> PInterval -> PInterval
-unembed (PI a b) (PI x y) = PI ((x - a) * l) (1 - l * (b - y))
+unembed (PI a b) (PI x y) = PI ((x - a) / l) (1 - (b - y) / l)
   where l = b - a
 
 prop_unembedEmbed :: PInterval -> PInterval -> Bool
@@ -56,7 +69,7 @@ encodeStep :: Model a -> a -> PInterval -> PInterval
 encodeStep m x outer = embed outer (enc m x)
 
 encode :: Model a -> [a] -> Prob
-encode model xs = midpoint $ foldr (encodeStep model) initial xs
+encode model xs = midpoint $ foldl' (flip $ encodeStep model) initial xs
 
 stdBoolModel :: Model Bool
 stdBoolModel = Model { enc = enco, dec = deco }
