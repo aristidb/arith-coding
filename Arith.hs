@@ -32,6 +32,9 @@ instance Arbitrary Prob where
 data PInterval = PI { start :: Prob, end :: Prob }
   deriving (Show, Eq)
 
+isSubintervalOf :: PInterval -> PInterval -> Bool
+PI a b `isSubintervalOf` PI x y = a >= x && b <= y
+
 piIsValid :: PInterval -> Bool
 piIsValid (PI a b) = probIsValid a && probIsValid b && a < b
 
@@ -39,7 +42,7 @@ instance Arbitrary PInterval where
   arbitrary = do [a, b] <- sort <$> replicateM 2 arbitrary
                  return (PI a b)
 
-data Model a = Model { enc :: a -> PInterval, dec :: Prob -> a }
+data Model a = Model { enc :: a -> PInterval, dec :: PInterval -> Maybe a }
 
 initial :: PInterval
 initial = PI 0 1
@@ -71,16 +74,17 @@ encodeStep m x outer = embed outer (enc m x)
 encode :: Model a -> [a] -> Prob
 encode model xs = midpoint $ foldl' (flip $ encodeStep model) initial xs
 
-decode :: Model a -> Prob -> [(a, PInterval)]
+decode :: Model a -> Prob -> [a]
 decode model p = go (PI p p)
-  where go inner = (c, inner) : go (unembed outer inner)
-          where c = dec model (midpoint inner)
-                outer = enc model c
+  where go inner = case dec model inner of
+                     Just c -> c : go (unembed (enc model c) inner)
+                     Nothing -> []
 
 stdBoolModel :: Model Bool
 stdBoolModel = Model { enc = enco, dec = deco }
   where enco False = PI 0 0.5
         enco True = PI 0.5 1
 
-        deco x | x <= 0.5  = False
-               | otherwise = True
+        deco rng | rng `isSubintervalOf` PI 0 0.5 = Just False
+                 | rng `isSubintervalOf` PI 0.5 1 = Just True
+                 | otherwise = Nothing
