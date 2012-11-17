@@ -55,8 +55,7 @@ embed (PI a b) (PI x y) = PI (a + x*l) (b-(1-y)*l)
   where l = b - a
 
 prop_embedConstrains :: PInterval -> PInterval -> Bool
-prop_embedConstrains outer@(PI oa ob) inner = let (PI a b) = embed outer inner
-                                              in a >= oa && b <= ob
+prop_embedConstrains outer inner = embed outer inner `isSubintervalOf` outer
 
 prop_embedValid :: PInterval -> PInterval -> Bool
 prop_embedValid outer inner = piIsValid (embed outer inner)
