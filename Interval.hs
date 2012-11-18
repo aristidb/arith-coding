@@ -9,6 +9,10 @@ import           Prob (Prob)
 import           Test.QuickCheck
 
 data PInterval = PI { start :: Prob, end :: Prob }
+  deriving (Eq, Show)
+
+sizedInterval :: Prob -> Prob -> PInterval
+sizedInterval a l = PI a (a + l)
 
 isSubintervalOf :: PInterval -> PInterval -> Bool
 PI a b `isSubintervalOf` PI x y = a >= x && b <= y
@@ -33,12 +37,29 @@ embed :: PInterval -> PInterval -> PInterval
 embed (PI a b) (PI x y) = PI (a + x*l) (b-(1-y)*l)
   where l = b - a
 
+prop_embedConstrains :: PInterval -> PInterval -> Bool
+prop_embedConstrains outer inner = embed outer inner `isSubintervalOf` outer
+
+prop_embedValid :: PInterval -> PInterval -> Bool
+prop_embedValid outer inner = isValid (embed outer inner)
+
+unembed :: PInterval -> PInterval -> PInterval
+unembed (PI a b) (PI x y) = PI ((x - a) / l) (1 - (b - y) / l)
+  where l = b - a
+
+prop_unembedEmbed :: PInterval -> PInterval -> Bool
+prop_unembedEmbed outer inner = unembed outer (embed outer inner) == inner
+
 fromWord64 :: Word64 -> PInterval
-fromWord64 x = PI p (p + 1/fromInteger Prob.twoTo64)
+fromWord64 x = PI p (p + 1/fromInteger Prob.twoTo64MinusOne)
   where p = Prob.fromWord64 x
 
 appendWord64 :: PInterval -> Word64 -> PInterval
 appendWord64 outer = embed outer . fromWord64
 
-readWord64 :: PInterval -> (Word64, PInterval)
-readWord64 rng = undefined
+readWord64 :: PInterval -> Either Word64 (Word64, PInterval)
+readWord64 (PI a b) = if wa == wb
+                      then Right (wa, PI pa pb)
+                      else Left ((wa + wb) `div` 2)
+  where (wa, pa) = Prob.readWord64 a
+        (wb, pb) = Prob.readWord64 b

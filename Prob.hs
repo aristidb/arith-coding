@@ -32,11 +32,11 @@ bits 0 = error "Infinite bits"
 bits x | x <= 0.5 = 1 + bits (x*2)
 bits _ = 0
 
-twoTo64 :: Integer
-twoTo64 = 2 ^ (64 :: Int)
+twoTo64MinusOne :: Integer
+twoTo64MinusOne = 2 ^ (64 :: Int) - 1
 
 fromWord64 :: Word64 -> Prob
-fromWord64 x = Prob $ toInteger x % twoTo64
+fromWord64 x = Prob $ toInteger x % twoTo64MinusOne
 
 readWord64 :: Prob -> (Word64, Prob)
-readWord64 (Prob x) = second Prob $ properFraction (x*fromInteger twoTo64)
+readWord64 (Prob x) = second Prob $ properFraction (x*fromInteger twoTo64MinusOne)
