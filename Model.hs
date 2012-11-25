@@ -11,6 +11,15 @@ import Control.Lens
 data Sym a = Sym a | EOF
   deriving (Show, Eq, Functor)
 
+sym :: Iso (Maybe a) (Maybe b) (Sym a) (Sym b)
+sym = isos f g f g
+  where
+    f (Just a) = Sym a
+    f Nothing = EOF
+
+    g (Sym a) = Just a
+    g EOF = Nothing
+
 data Decode a = Decode a | NoDecode
   deriving (Show, Eq, Functor)
 
@@ -37,7 +46,7 @@ stdEnumModel = Model { enc = enco, dec = deco }
     enco x = sizedInterval (Prob $ toInteger (fromEnum x) % num) p1
 
     deco rng@(PI (Prob a) _)
-      = if rng `isSubintervalOf` enco x
+      = if rng `isSubintervalOf` enco (x :: a)
         then Decode x
         else NoDecode
       where x = toEnum (min i (fromEnum maxi))
@@ -57,12 +66,6 @@ maybeModel p m = Model { enc = enco, dec = deco }
              | otherwise = NoDecode
 
 eofModel :: forall a. Prob -> PureModel a -> PureModel (Sym a)
-eofModel p m = Model { enc = enc mMod . symToMaybe
-                     , dec = fmap maybeToSim . dec mMod }
+eofModel p m = Model { enc = enc mMod . review sym
+                     , dec = fmap (view sym) . dec mMod }
   where mMod = maybeModel p m
-
-        symToMaybe (Sym a) = Just a
-        symToMaybe EOF = Nothing
-
-        maybeToSim (Just a) = Sym a
-        maybeToSim Nothing = EOF
