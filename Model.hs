@@ -67,5 +67,5 @@ maybeModel p m = Model { enc = enco, dec = deco }
 
 eofModel :: forall a. Prob -> PureModel a -> Model a
 eofModel p m = Model { enc = enc mMod . review sym
-                     , dec = fmap (view sym) . dec mMod }
+                     , dec = view (mapping sym) . dec mMod }
   where mMod = maybeModel p m
