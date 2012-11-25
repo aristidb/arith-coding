@@ -5,22 +5,27 @@ import Interval
 import Prob (Prob(..))
 import Data.Ratio
 import Control.Applicative
+import Control.Lens
 --import Test.QuickCheck
 
-data Decode a = Sym a | EOF | NoSym
+data Sym a = Sym a | EOF
   deriving (Show, Eq, Functor)
 
-data Model a = Model {
+data Decode a = Decode a | NoDecode
+  deriving (Show, Eq, Functor)
+
+data PureModel a = Model {
     enc :: a -> PInterval
-  , eofPI :: PInterval 
   , dec :: PInterval -> Decode a
   }
 
-prop_ModelRoundtrip :: Eq a => Model a -> a -> Bool
-prop_ModelRoundtrip m a = dec m (enc m a) == Sym a
+type Model a = PureModel (Sym a)
 
-stdEnumModel :: forall a. (Bounded a, Enum a) => Model a
-stdEnumModel = Model { enc = enco, eofPI = PI 0 0, dec = deco }
+prop_ModelRoundtrip :: Eq a => PureModel a -> a -> Bool
+prop_ModelRoundtrip m a = dec m (enc m a) == Decode a
+
+stdEnumModel :: forall a. (Bounded a, Enum a) => PureModel a
+stdEnumModel = Model { enc = enco, dec = deco }
   where
     mini, maxi :: a
     mini = minBound
@@ -33,13 +38,13 @@ stdEnumModel = Model { enc = enco, eofPI = PI 0 0, dec = deco }
 
     deco rng@(PI (Prob a) _)
       = if rng `isSubintervalOf` enco x
-        then Sym x
-        else NoSym
+        then Decode x
+        else NoDecode
       where x = toEnum (min i (fromEnum maxi))
             i = floor (a * fromInteger num)
 
-maybeModel :: forall a. Prob -> Model a -> Model (Maybe a)
-maybeModel p m = Model { enc = enco, eofPI = PI 0 0, dec = deco }
+maybeModel :: forall a. Prob -> PureModel a -> PureModel (Maybe a)
+maybeModel p m = Model { enc = enco, dec = deco }
   where
     r1 = PI 0 p
     r2 = PI p 1
@@ -47,17 +52,17 @@ maybeModel p m = Model { enc = enco, eofPI = PI 0 0, dec = deco }
     enco Nothing = r1
     enco (Just x) = embed r2 (enc m x)
 
-    deco rng | rng `isSubintervalOf` r1 = Sym Nothing
+    deco rng | rng `isSubintervalOf` r1 = Decode Nothing
              | rng `isSubintervalOf` r2 = Just <$> dec m (unembed r2 rng)
-             | otherwise = NoSym
+             | otherwise = NoDecode
 
-eofModel :: forall a. Prob -> Model a -> Model a
-eofModel p m = Model { enc = enc mMod . Just
-                     , eofPI = PI 0 p
-                     , dec = adaptDec . dec mMod }
+eofModel :: forall a. Prob -> PureModel a -> PureModel (Sym a)
+eofModel p m = Model { enc = enc mMod . symToMaybe
+                     , dec = fmap maybeToSim . dec mMod }
   where mMod = maybeModel p m
 
-        adaptDec (Sym (Just x)) = Sym x
-        adaptDec (Sym Nothing) = EOF
-        adaptDec EOF = EOF
-        adaptDec NoSym = NoSym
+        symToMaybe (Sym a) = Just a
+        symToMaybe EOF = Nothing
+
+        maybeToSim (Just a) = Sym a
+        maybeToSim Nothing = EOF
