@@ -65,7 +65,7 @@ maybeModel p m = Model { enc = enco, dec = deco }
              | rng `isSubintervalOf` r2 = Just <$> dec m (unembed r2 rng)
              | otherwise = NoDecode
 
-eofModel :: forall a. Prob -> PureModel a -> PureModel (Sym a)
+eofModel :: forall a. Prob -> PureModel a -> Model a
 eofModel p m = Model { enc = enc mMod . review sym
                      , dec = fmap (view sym) . dec mMod }
   where mMod = maybeModel p m
