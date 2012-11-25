@@ -23,6 +23,9 @@ sym = isos f g f g
 data Decode a = Decode a | NoDecode
   deriving (Show, Eq, Functor)
 
+decodeSym :: Simple Iso (Decode (Maybe a)) (Decode (Sym a))
+decodeSym = mapping sym
+
 data PureModel a = Model {
     enc :: a -> PInterval
   , dec :: PInterval -> Decode a
@@ -67,5 +70,5 @@ maybeModel p m = Model { enc = enco, dec = deco }
 
 eofModel :: forall a. Prob -> PureModel a -> Model a
 eofModel p m = Model { enc = enc mMod . review sym
-                     , dec = view (mapping sym) . dec mMod }
+                     , dec = view decodeSym . dec mMod }
   where mMod = maybeModel p m
