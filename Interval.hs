@@ -3,6 +3,7 @@ module Interval where
 import           Control.Applicative
 import           Control.Monad
 import           Data.List
+import           Data.Monoid
 import           Data.Word
 import qualified Prob
 import           Prob (Prob)
@@ -10,6 +11,19 @@ import           Test.QuickCheck
 
 data PInterval = PI { start :: Prob, end :: Prob }
   deriving (Eq, Show)
+
+instance Monoid PInterval where
+  mempty = PI 0 1
+  mappend = embed
+
+prop_leftIdMonoid :: PInterval -> Bool
+prop_leftIdMonoid x = mempty `mappend` x == x
+
+prop_rightIdMonoid :: PInterval -> Bool
+prop_rightIdMonoid x = x `mappend` mempty == x
+
+prop_assocMonoid :: PInterval -> PInterval -> PInterval -> Bool
+prop_assocMonoid a b c = a `mappend` (b `mappend` c) == (a `mappend` b) `mappend` c
 
 sizedInterval :: Prob -> Prob -> PInterval
 sizedInterval a l = PI a (a + l)
