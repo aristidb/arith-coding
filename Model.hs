@@ -61,5 +61,5 @@ maybeModel p m = prism enco deco
              | rng `isSubintervalOf` r2 = Right (unembed r2 rng ^? m)
              | otherwise = Left rng
 
---eofModel :: forall a. Prob -> PureModel a -> PureModel (Sym a)
---eofModel p m = maybeModel p m . sym
+eofModel :: Prob -> PureModel a -> Model a
+eofModel p m = maybeModel p m . sym
