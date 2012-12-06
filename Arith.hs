@@ -7,11 +7,11 @@ import Interval
 import Model
 import Prob (Prob)
 
-encodeStep :: Model a -> Sym a -> PInterval -> PInterval
-encodeStep m x outer = embed outer (review m x)
+encodeStep :: Model a -> PInterval -> Sym a -> PInterval
+encodeStep m outer x = embed outer (review m x)
 
 encode :: Model a -> [a] -> Prob
-encode m xs = midpoint $ foldl' (flip $ encodeStep m) initial (map Sym xs ++ [EOF])
+encode m xs = midpoint $ foldl' (encodeStep m) initial (map Sym xs ++ [EOF])
 
 decode :: Model a -> Prob -> [a]
 decode m p = go (PI p p)
