@@ -9,15 +9,20 @@ import Model
 import Prelude hiding (id, (.))
 import Prob (Prob)
 
-encodeStep :: Model a -> PInterval -> Sym a -> PInterval
-encodeStep m outer x = x ^. remit (embedding outer . m)
+encodeStep :: Model a -> Sym a -> PInterval -> PInterval
+encodeStep m x inner = (inner, x) ^. remit m
 
-encode :: Model a -> [a] -> Prob
-encode m xs = midpoint $ foldl' (encodeStep m) initial (map Sym xs ++ [EOF])
+encode :: Model a -> [a] -> PInterval
+encode m xs = foldr (encodeStep m) initial (map Sym xs ++ [EOF])
 
-decode :: Model a -> Prob -> [a]
-decode m p = go (PI p p)
+decode :: Model a -> PInterval -> [a]
+decode m = go
   where go inner = case inner ^? m of
-                     Just w@(Sym c) -> c : go (inner ^?! embedding (w ^. remit m))
-                     Just EOF -> []
+                     Just (r, w@(Sym c)) -> c : go r
+                     Just (_, EOF) -> []
                      Nothing -> error "Invalid stream"
+
+prop_roundtripA :: Eq a => Model a -> [a] -> Bool
+prop_roundtripA m xs = decode m (encode m xs) == xs
+
+--prop_roundtripB :: Eq a => Model a -> PInterval -> Bool

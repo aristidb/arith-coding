@@ -25,6 +25,9 @@ sym = iso f g
     g (Sym a) = Just a
     g EOF = Nothing
 
+instance Arbitrary a => Arbitrary (Sym a) where
+  arbitrary = arbitrary <&> view sym
+
 type PureModel a = Simple Prism PInterval (PInterval, a)
 type Model a = PureModel (Sym a)
 
