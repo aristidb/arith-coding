@@ -22,10 +22,9 @@ PI a b `isSubintervalOf` PI x y = a >= x && b <= y
 isValid :: PInterval -> Bool
 isValid (PI a b) = Prob.isValid a && Prob.isValid b && a < b
 
-{-
 instance Monoid PInterval where
   mempty = PI 0 1
-  mappend = embed
+  mappend = review . embedding
 
 prop_leftIdMonoid :: PInterval -> Bool
 prop_leftIdMonoid x = mempty `mappend` x == x
@@ -35,7 +34,9 @@ prop_rightIdMonoid x = x `mappend` mempty == x
 
 prop_assocMonoid :: PInterval -> PInterval -> PInterval -> Bool
 prop_assocMonoid a b c = a `mappend` (b `mappend` c) == (a `mappend` b) `mappend` c
--}
+
+prop_Monoid :: Property
+prop_Monoid = prop_leftIdMonoid .&. prop_rightIdMonoid .&. prop_assocMonoid
 
 instance Arbitrary PInterval where
   arbitrary = do [a, b] <- sort <$> replicateM 2 arbitrary
