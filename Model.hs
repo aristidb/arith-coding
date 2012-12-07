@@ -5,6 +5,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Control.Lens
+import Data.Monoid
 import Data.Ratio
 import Interval
 import Prelude hiding (id, (.))
@@ -45,11 +46,11 @@ mkModel enco deco = prism
 stdEnumModel :: forall a. (Bounded a, Enum a) => PureModel a
 stdEnumModel = mkModel enco deco
   where
-    mini, maxi :: a
-    mini = minBound
-    maxi = maxBound
+    mini, maxi :: Int
+    mini = fromEnum (minBound :: a)
+    maxi = fromEnum (maxBound :: a)
 
-    num = toInteger (fromEnum maxi) - toInteger (fromEnum mini) + 1
+    num = toInteger maxi - toInteger mini + 1
     p1 = Prob $ 1 % num
 
     enco x = sizedInterval start p1
@@ -57,7 +58,7 @@ stdEnumModel = mkModel enco deco
 
     deco rng@(PI (Prob a) _)
       = rng ^? embedding outer <&> (,x)
-      where x = toEnum (min i (fromEnum maxi))
+      where x = toEnum (min i maxi)
             outer = enco x
             i = floor (a * fromInteger num)
 
@@ -68,10 +69,10 @@ maybeModel p m = mkModel enco deco
     r2 = PI p 1
     
     enco Nothing = r1
-    enco (Just x) = review (embedding r2) (review m (PI 0 1, x))
+    enco (Just x) = review (embedding r2) (review m (mempty, x))
 
     deco (preview (embedding r1) -> Just i1) = Just (i1, Nothing)
-    deco (preview (embedding r2) -> Just i2) = i2 ^? m <&> second Just
+    deco (preview (embedding r2) -> Just i2) = i2 ^? m <&> fmap Just
     deco _                                   = Nothing
 
 eofModel :: Prob -> PureModel a -> Model a
