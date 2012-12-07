@@ -54,12 +54,13 @@ maybeModel p m = prism enco deco
     r2 = PI p 1
     
     enco Nothing = r1
-    enco (Just x) = embed r2 (review m x)
+    enco (Just x) = review (embedding r2) (review m x)
 
     deco :: PInterval -> Either PInterval (Maybe a)
     deco rng | rng `isSubintervalOf` r1 = Right Nothing
-             | rng `isSubintervalOf` r2 = Right (unembed r2 rng ^? m)
-             | otherwise = Left rng
+             | otherwise = case rng ^? embedding r2 of
+                             Just rng2 -> Right $ rng2 ^? m
+                             Nothing -> Left rng
 
 eofModel :: Prob -> PureModel a -> Model a
 eofModel p m = maybeModel p m . sym

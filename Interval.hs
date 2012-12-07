@@ -1,6 +1,7 @@
 module Interval where
 
 import           Control.Applicative
+import           Control.Lens
 import           Control.Monad
 import           Data.List
 import           Data.Monoid
@@ -21,6 +22,7 @@ PI a b `isSubintervalOf` PI x y = a >= x && b <= y
 isValid :: PInterval -> Bool
 isValid (PI a b) = Prob.isValid a && Prob.isValid b && a < b
 
+{-
 instance Monoid PInterval where
   mempty = PI 0 1
   mappend = embed
@@ -33,6 +35,7 @@ prop_rightIdMonoid x = x `mappend` mempty == x
 
 prop_assocMonoid :: PInterval -> PInterval -> PInterval -> Bool
 prop_assocMonoid a b c = a `mappend` (b `mappend` c) == (a `mappend` b) `mappend` c
+-}
 
 instance Arbitrary PInterval where
   arbitrary = do [a, b] <- sort <$> replicateM 2 arbitrary
@@ -47,6 +50,7 @@ midpoint (PI a b) = (a + b) / 2
 initial :: PInterval
 initial = PI 0 1
 
+{-
 embed :: PInterval -> PInterval -> PInterval
 embed (PI a b) (PI x y) = PI (a + x*l) (b-(1-y)*l)
   where l = b - a
@@ -63,13 +67,22 @@ prop_embedValid outer inner = isValid (embed outer inner)
 
 prop_unembedEmbed :: PInterval -> PInterval -> Bool
 prop_unembedEmbed outer inner = unembed outer (embed outer inner) == inner
+-}
+
+embedding :: PInterval -> Simple Prism PInterval PInterval
+embedding outer@(PI a b) = prism embed unembed
+  where embed (PI x y) = PI (a + x * l) (b - (1-y)*l)
+        unembed inner@(PI x y) = if inner `isSubintervalOf` outer
+                                 then Right $ PI ((x - a) / l) (1 - (b - y) / l)
+                                 else Left inner
+        l = b - a
 
 fromWord64 :: Word64 -> PInterval
 fromWord64 x = PI p (p + 1/fromInteger Prob.twoTo64MinusOne)
   where p = Prob.fromWord64 x
 
 appendWord64 :: PInterval -> Word64 -> PInterval
-appendWord64 outer = embed outer . fromWord64
+appendWord64 outer = review (embedding outer) . fromWord64
 
 readWord64 :: PInterval -> Either Word64 (Word64, PInterval)
 readWord64 (PI a b) = if wa == wb
