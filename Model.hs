@@ -80,3 +80,6 @@ maybeModel p m = mkModel enco deco
 
 eofModel :: Prob -> PureModel a -> Model a
 eofModel p m = maybeModel p m . mapping sym
+
+charModel :: Model Char
+charModel = eofModel (1/1000000) stdEnumModel
