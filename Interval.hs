@@ -10,7 +10,7 @@ import qualified Prob
 import           Prob (Prob)
 import           Test.QuickCheck
 
-data PInterval = PI { start :: Prob, end :: Prob }
+data PInterval = PI { start :: !Prob, end :: !Prob }
   deriving (Eq, Show)
 
 sizedInterval :: Prob -> Prob -> PInterval
